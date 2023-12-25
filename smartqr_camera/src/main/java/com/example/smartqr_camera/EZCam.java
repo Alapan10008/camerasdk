@@ -638,6 +638,8 @@ public class EZCam {
 ////                    createCameraPreview();
 //                }
 //            };
+
+
         try {
             cameraCaptureSession.capture(captureRequestBuilderImageReader.build(), null, backgroundHandler);
         } catch (CameraAccessException e) {

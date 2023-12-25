@@ -4,11 +4,11 @@ plugins {
 
 android {
     namespace 'com.example.smartqr_camera'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
-        minSdk 24
-        targetSdk 33
+        minSdk 30
+        targetSdk 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
