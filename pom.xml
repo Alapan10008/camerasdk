@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.Alapan10008</groupId>
   <artifactId>camerasdk</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.0</version>
   <packaging>pom</packaging>
   <description>Camera sdk for smartqr</description>
 </project>
