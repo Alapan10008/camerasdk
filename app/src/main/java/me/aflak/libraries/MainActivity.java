@@ -54,6 +54,7 @@ public class MainActivity extends Activity implements EZCamCallback, View.OnLong
         String id = cam.getCamerasList().get(CameraCharacteristics.LENS_FACING_BACK);
         cam.selectCamera(id);
 
+
         Dexter.withActivity(MainActivity.this).withPermission(Manifest.permission.CAMERA).withListener(new PermissionListener() {
             @Override
             public void onPermissionGranted(PermissionGrantedResponse response) {
@@ -82,25 +83,20 @@ public class MainActivity extends Activity implements EZCamCallback, View.OnLong
     public void onCameraReady() {
         cam.setCaptureSetting(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE, CameraMetadata.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY);
         cam.startPreview();
-
         textureView.setOnLongClickListener(this);
     }
 
     @Override
-    public void onPicture(Image image) {
+    public void onPicture() {
         cam.stopPreview();
-        try {
-            String filename = "image_"+dateFormat.format(new Date())+".jpg";
-            File file = new File(getFilesDir(), filename);
-            EZCam.saveImage(image, file);
 
-            Intent intent = new Intent(this, DisplayActivity.class);
-            intent.putExtra("filepath", file.getAbsolutePath());
-            startActivity(intent);
-            finish();
-        } catch (IOException e) {
-            Log.e(TAG, e.getMessage());
-        }
+
+//        String filename = "image_"+dateFormat.format(new Date())+".jpg";
+//        File file = new File(getFilesDir(), filename);
+//        Intent intent = new Intent(this, DisplayActivity.class);
+//        intent.putExtra("filepath", file.getAbsolutePath());
+//        startActivity(intent);
+//        finish();
     }
 
     @Override

@@ -7,7 +7,6 @@ import static android.content.ContentValues.TAG;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -66,30 +65,26 @@ import java.util.Date;
 import java.util.List;
 
 
-
-
-import android.app.ProgressDialog;
-
-import android.os.ParcelFileDescriptor;
-
-import android.util.SizeF;
-
-import java.io.FileDescriptor;
-
-
+/**
+ * Class that simplifies the use of Camera 2 api
+ *
+ * @author Omar Aflak
+ * @since 23/02/2017
+ */
 
 public class EZCam {
-    private Context context;
+    private static Context context;
     private EZCamCallback cameraCallback;
 
     private SparseArray<String> camerasList;
     private String currentCamera;
     private Size previewSize;
     private File file;
+    private  ImageReader reader;
     private CameraManager cameraManager;
     private CameraDevice cameraDevice;
     private CameraCaptureSession cameraCaptureSession;
-    private CameraCharacteristics cameraCharacteristics;
+    private static CameraCharacteristics cameraCharacteristics;
     private CaptureRequest.Builder captureRequestBuilder;
     private CaptureRequest.Builder captureRequestBuilderImageReader;
     private ImageReader imageReader;
@@ -108,64 +103,30 @@ public class EZCam {
     private boolean isMagnetometerSet = false;
     private float[] rotationMatrix = new float[9];
     private float[] orientation = new float[3];
-    private TotalCaptureResult captureResult;
-    private Image capturedImage;
-    boolean rawSupported = false;
-
-    String base64EncodedImage = null;
+    private static TotalCaptureResult captureResult;
+    private static Image capturedImage;
+    static boolean rawSupported = false;
 
     private HandlerThread backgroundThread;
     private Handler backgroundHandler;
-
-    private File tempFile = null;
-    Bitmap myBitmap;
-
-    private long lastTimestamp = 0;
-    private int frameCount = 0;
-
-    DngCreator dngCreator;
-//    ImageView ivPreview;
-
-    private float[] apertures;
-
-
-    byte[] fileContent;
-
-    SizeF sensorSize;
-    float focalLength;
-    Bitmap croppedBitmap = null;
-    float sensorHeight;
-
-    String base64EncodedString = null;
-    ProgressDialog dialog;
-    String patientName = "";
-    int patientAge ;
-
-    String patientGender = "";
-
-    Size[] jpegSizes = null;
-    private TextView heightTxt;
-    float bestScore = 0.0f;
-    float[] bestBox = null;
-    int bestBoxWidth = 0;
-    int bestBoxHeight = 0;
 
     public EZCam(Context context) {
         this.context = context;
         this.cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
 
-        accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        magneticFieldSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        this.sensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
-        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        sensorManager.registerListener(lightSensorListener, lightSensor, SensorManager.SENSOR_DELAY_FASTEST);
-        if (accelerometerSensor != null && magneticFieldSensor != null) {
-            sensorManager.registerListener(sensorListener, accelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            sensorManager.registerListener(sensorListener, magneticFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        else {
-            Toast.makeText(context, "Required sensors are not available!", Toast.LENGTH_LONG).show();
-        }
+
+//        accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+//        magneticFieldSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+//        this.sensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+//        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+//        sensorManager.registerListener(lightSensorListener, lightSensor, SensorManager.SENSOR_DELAY_FASTEST);
+//        if (accelerometerSensor != null && magneticFieldSensor != null) {
+//            sensorManager.registerListener(sensorListener, accelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
+//            sensorManager.registerListener(sensorListener, magneticFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
+//        }
+//        else {
+//            Toast.makeText(context, "Required sensors are not available!", Toast.LENGTH_LONG).show();
+//        }
     }
 
 
@@ -216,6 +177,8 @@ public class EZCam {
         }
     }
 
+
+
     /**
      * Select the camera you want to open : front, back, external(s)
      * @param id Id of the camera which can be retrieved with getCamerasList().get(CameraCharacteristics.LENS_FACING_BACK)
@@ -232,6 +195,7 @@ public class EZCam {
         }
 
         try {
+
             cameraCharacteristics = cameraManager.getCameraCharacteristics(currentCamera);
             StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             int[] capabilities = cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES);
@@ -245,13 +209,12 @@ public class EZCam {
             imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
 
 
-
-
-            // Add permission for camera and let user grant the permission
+//             Add permission for camera and let user grant the permission
 //            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
 //                ActivityCompat.requestPermissions(context, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
 //                return;
 //            }
+
             if(map != null) {
                 previewSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
                 imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
@@ -353,11 +316,13 @@ public class EZCam {
     };
 
 
+
     /**
      * Open camera to prepare preview
      * @param templateType capture mode e.g. CameraDevice.TEMPLATE_PREVIEW
      * @param textureView Surface where preview should be displayed
      */
+
     public void open(final int templateType, final TextureView textureView) {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             notifyError("You don't have the required permissions.");
@@ -393,6 +358,21 @@ public class EZCam {
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
+            String id = getCamerasList().get(CameraCharacteristics.LENS_FACING_BACK);
+            currentCamera = camerasList.indexOfValue(id)<0?null:id;
+            cameraCharacteristics = cameraManager.getCameraCharacteristics(currentCamera);
+            StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            assert map != null;
+            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+            int[] capabilities = cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES);
+
+            for (int capability : capabilities) {
+                if (capability == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW) {
+                    rawSupported = true;
+                    break;
+                }
+            }
+
             cameraManager.openCamera(currentCamera, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice camera) {
@@ -593,59 +573,48 @@ public class EZCam {
      * take a picture
      */
     public void takePicture(){
-
-
         captureRequestBuilderImageReader.set(CaptureRequest.JPEG_ORIENTATION, cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION));
-        if (cameraDevice == null) {
-            Log.e(TAG, "cameraDevice is null");
-            return;
-        }
-        if (!isExternalStorageAvailableForRW() || isExternalStorageReadOnly()) {
-//            bTakePicture.setEnabled(false);
-        }
-
-        Size[] rawSizes = null;
-
-        rawSizes = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
-        if (rawSizes != null) {
-            for (Size size : rawSizes) {
-
-            }
-        }
 
         int width = 1920;
         int height = 1080;
-        if (jpegSizes != null && jpegSizes.length > 0) {
-            width = jpegSizes[0].getWidth();
-            height = jpegSizes[0].getHeight();
-            for (Size size : jpegSizes) {
-                if (size.getWidth() == 1920 && size.getHeight() == 1080) {
-                    width = size.getWidth();
-                    height = size.getHeight();
-                    break;
-                }
-            }
-        }
 
 
+//        ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
 
         if (cameraCharacteristics != null) {
+
             if (rawSupported) {
-                jpegSizes = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
-                imageReader = ImageReader.newInstance(jpegSizes[0].getWidth(), jpegSizes[0].getHeight(), ImageFormat.RAW_SENSOR, 1);
-                File dir = context.getExternalFilesDir(null);
-                tempFile = new File(dir, System.currentTimeMillis() + ".dng");
+                Size[] rawSizes = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
+                if (rawSizes != null && rawSizes.length > 0) {
+                    width = rawSizes[0].getWidth();
+                    height = rawSizes[0].getHeight();
+                }
+
+                imageReader = ImageReader.newInstance(width, height, ImageFormat.RAW_SENSOR, 1);
+//                        File dir = getExternalFilesDir(null);
+
+                // Setting up file for saving the DNG image
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String imageFileName = "IMG_" + timeStamp + ".dng"; // Use ".dng" extension
+                File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                file = new File(storageDir, imageFileName);
+                Log.e(TAG, "Raw Supported : "+ file.getName() + " " + rawSupported);
             } else {
-                jpegSizes = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+                Size[] rawSizes = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
                 imageReader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
-                File dir = context.getExternalFilesDir(null);
-                tempFile = new File(dir, System.currentTimeMillis() + ".heic");
+//                    File dir = getExternalFilesDir(null);
+                // Setting up file for saving the DNG image
+
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String imageFileName = "IMG_" + timeStamp + ".heic"; // Use ".dng" extension
+                File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                file = new File(storageDir, imageFileName);
+                Log.e(TAG, "Raw Supported : " + rawSupported);
             }
         }
 
 
         setCameraProperties();
-
 
         ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
             @Override
@@ -654,42 +623,39 @@ public class EZCam {
                 if (rawSupported) {
                     processImage();
                 } else {
-                    processHeicImage();
+                    processHEICImage();
                 }
             }
         };
-
         imageReader.setOnImageAvailableListener(readerListener, backgroundHandler);
 
-        final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
-            @Override
-            public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-                super.onCaptureCompleted(session, request, result);
-                // Get the actual applied ISO from the result
-                Integer actualISO = result.get(CaptureResult.SENSOR_SENSITIVITY);
 
-                // Update the UI or log the value
-                if (actualISO != null) {
+            final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                    super.onCaptureCompleted(session, request, result);
+                    captureResult = result;
 
-                }
-                captureResult = result;
-                // Now check if captureResult is null
-                if (captureResult != null) {
-                    if (rawSupported) {
-                        processImage();
+                    // Now check if captureResult is null
+
+                    if (captureResult != null) {
+                        if (!rawSupported) {
+                            processImage();
+                        } else {
+                            processHEICImage();
+                        }
+                        Toast.makeText(context, "Saved:" + file, Toast.LENGTH_SHORT).show();
                     } else {
-                        processHeicImage();
+                        Toast.makeText(context, "captureResult is null" , Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "captureResult is null");
                     }
-                } else {
+//                    createCameraPreview();
                 }
-            }
-
-
-        };
+            };
 
 
         try {
-            cameraCaptureSession.capture(captureRequestBuilderImageReader.build(), null, backgroundHandler);
+            cameraCaptureSession.capture(captureRequestBuilderImageReader.build(), captureListener, backgroundHandler);
         } catch (CameraAccessException e) {
             notifyError(e.getMessage());
         }
@@ -699,8 +665,11 @@ public class EZCam {
     private ImageReader.OnImageAvailableListener onImageAvailable = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
-            if(cameraCallback != null){
-                cameraCallback.onPicture(imageReader.acquireLatestImage());
+            capturedImage = reader.acquireLatestImage();
+            if (!rawSupported) {
+                processImage();
+            } else {
+                processHEICImage();
             }
         }
     };
@@ -711,26 +680,6 @@ public class EZCam {
         }
     }
 
-    /**
-     * Save image to storage
-     * @param image Image object got from onPicture() callback of EZCamCallback
-     * @param file File where image is going to be written
-     * @return File object pointing to the file uri, null if file already exist
-     */
-    public static File saveImage(Image image, File file) throws IOException {
-        if(file.exists()) {
-            image.close();
-            return null;
-        }
-        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
-        FileOutputStream output = new FileOutputStream(file);
-        output.write(bytes);
-        image.close();
-        output.close();
-        return file;
-    }
 
     private void startBackgroundThread() {
         backgroundThread = new HandlerThread("EZCam");
@@ -749,7 +698,7 @@ public class EZCam {
         }
     }
 
-    private void processHeicImage() {
+    private void processHEICImage(){
 
         if (capturedImage != null && captureResult != null) {
             Image.Plane[] planes = capturedImage.getPlanes();
@@ -789,19 +738,22 @@ public class EZCam {
             }
         }
     }
-
-
-
     private void processImage() {
+        if(captureResult==null){
+            Toast.makeText(context, "captureResult", Toast.LENGTH_SHORT).show();
+        }
+
         if (capturedImage != null && captureResult != null) {
             // Now you have both the image and the capture result
             DngCreator dngCreator = new DngCreator(cameraCharacteristics, captureResult);
+            Log.e(TAG, "Raw Supported : "+ file.getName() + " " + rawSupported);
             try (FileOutputStream output = new FileOutputStream(file)) {
                 dngCreator.writeImage(output, capturedImage);
             } catch (IOException e) {
+                Log.i("DngCreator", "writeImage" );
                 e.printStackTrace();
             } finally {
-                capturedImage.close();
+//                capturedImage.close();
                 capturedImage = null;
                 captureResult = null;
             }
@@ -815,9 +767,6 @@ public class EZCam {
                     });
         }
     }
-
-
-
     private void setCameraProperties() {
 
 
@@ -851,25 +800,5 @@ public class EZCam {
             e.printStackTrace();
         }
     }
-
-    private static boolean isExternalStorageReadOnly() {
-        String extStorageState = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState)) {
-            return true;
-        }
-        return false;
-    }
-
-    private boolean isExternalStorageAvailableForRW() {
-        // Check if the external storage is available for read and write by calling
-        // Environment.getExternalStorageState() method. If the returned state is MEDIA_MOUNTED,
-        // then you can read and write files. So, return true in that case, otherwise, false.
-        String extStorageState = Environment.getExternalStorageState();
-        if (extStorageState.equals(Environment.MEDIA_MOUNTED)) {
-            return true;
-        }
-        return false;
-    }
-
 
 }

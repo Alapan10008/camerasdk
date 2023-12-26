@@ -11,7 +11,7 @@ import android.media.Image;
 
 public interface EZCamCallback {
     void onCameraReady();
-    void onPicture(Image image);
+    void onPicture();
     void onError(String message);
     void onCameraDisconnected();
 }
