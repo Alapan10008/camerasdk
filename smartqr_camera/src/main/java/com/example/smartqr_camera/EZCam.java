@@ -127,6 +127,8 @@ public class EZCam {
 //        else {
 //            Toast.makeText(context, "Required sensors are not available!", Toast.LENGTH_LONG).show();
 //        }
+
+
     }
 
 
@@ -144,6 +146,7 @@ public class EZCam {
      * @return SparseArray of available cameras ids
      */
     public SparseArray<String> getCamerasList(){
+
         camerasList = new SparseArray<>();
         try {
             String[] camerasAvailable = cameraManager.getCameraIdList();
@@ -216,8 +219,10 @@ public class EZCam {
 //            }
 
             if(map != null) {
-                previewSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
-                imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
+                if(rawSupported) previewSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.RAW_SENSOR)), new CompareSizesByArea());
+                else previewSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+                if(rawSupported)imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.RAW_SENSOR, 1);
+                else imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
                 imageReader.setOnImageAvailableListener(onImageAvailable, backgroundHandler);
             }
             else{
@@ -227,94 +232,6 @@ public class EZCam {
             notifyError(e.getMessage());
         }
     }
-    private final SensorEventListener sensorListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                System.arraycopy(event.values, 0, lastAccelerometer, 0, event.values.length);
-                isAccelerometerSet = true;
-            } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-                System.arraycopy(event.values, 0, lastMagnetometer, 0, event.values.length);
-                isMagnetometerSet = true;
-            }
-            if (isAccelerometerSet && isMagnetometerSet) {
-                SensorManager.getRotationMatrix(rotationMatrix, null, lastAccelerometer, lastMagnetometer);
-                SensorManager.getOrientation(rotationMatrix, orientation);
-
-                float rollInRadians = orientation[2];
-                float rollInDegrees = (float) Math.toDegrees(rollInRadians);
-
-                float pitchInRadians = orientation[1];
-                float pitchInDegrees = (float) Math.toDegrees(pitchInRadians);
-
-                boolean shouldHideTakePicture = false; // Initialize the variable
-
-// Check the roll condition for left tilt
-                if (rollInDegrees > 15) {
-//                    borderViewleft.setBackgroundResource(R.color.red);
-//                    shouldHideTakePicture = true; // Set the variable to true
-                } else {
-//                    borderViewleft.setBackgroundResource(R.color.green);
-                }
-
-// Check the roll condition for right tilt
-                if (rollInDegrees < -15) {
-//                    borderViewright.setBackgroundResource(R.color.red);
-                    shouldHideTakePicture = true; // Set the variable to true
-                } else {
-//                    borderViewright.setBackgroundResource(R.color.green);
-                }
-
-// Check the pitch condition for top tilt
-                if (pitchInDegrees >= -40) {
-//                    borderViewtop.setBackgroundResource(R.color.green);
-                } else {
-//                    borderViewtop.setBackgroundResource(R.color.red);
-//                    shouldHideTakePicture = true; // Set the variable to true
-                }
-
-// Check for bottom tilt
-                if (pitchInDegrees <= -20) {
-//                    borderViewbottom.setBackgroundResource(R.color.green);
-                } else {
-//                    borderViewbottom.setBackgroundResource(R.color.red);
-                    shouldHideTakePicture = true; // Set the variable to true
-                }
-
-                // Set the visibility of bTakePicture based on the shouldHideTakePicture variable
-                if (shouldHideTakePicture) {
-//                    bTakePicture.setVisibility(View.GONE);
-                } else {
-//                    bTakePicture.setVisibility(View.VISIBLE);
-                }
-
-            }
-
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // Handle accuracy changes if necessary
-        }
-    };
-
-    private final SensorEventListener lightSensorListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
-                currentLux = event.values[0];
-//                setCameraProperties();
-
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // You can handle changes in accuracy here if necessary
-        }
-    };
-
 
 
     /**
@@ -324,10 +241,13 @@ public class EZCam {
      */
 
     public void open(final int templateType, final TextureView textureView) {
+
+
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             notifyError("You don't have the required permissions.");
             return;
         }
+
 
         startBackgroundThread();
 
@@ -616,19 +536,7 @@ public class EZCam {
 
 
         setCameraProperties();
-
-        ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
-            @Override
-            public void onImageAvailable(ImageReader reader) {
-                capturedImage = reader.acquireLatestImage();
-                if (rawSupported) {
-                    processImage();
-                } else {
-                    processHEICImage();
-                }
-            }
-        };
-        imageReader.setOnImageAvailableListener(readerListener, backgroundHandler);
+        imageReader.setOnImageAvailableListener(onImageAvailable, backgroundHandler);
 
 
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
@@ -640,7 +548,7 @@ public class EZCam {
                     // Now check if captureResult is null
 
                     if (captureResult != null) {
-                        if (!rawSupported) {
+                        if (rawSupported) {
                             processImage();
                         } else {
                             processHEICImage();
@@ -749,7 +657,10 @@ public class EZCam {
             DngCreator dngCreator = new DngCreator(cameraCharacteristics, captureResult);
             Log.e(TAG, "Raw Supported : "+ file.getName() + " " + rawSupported);
             try (FileOutputStream output = new FileOutputStream(file)) {
+
+                Log.i("output_content",output.toString());
                 dngCreator.writeImage(output, capturedImage);
+
             } catch (IOException e) {
                 Log.i("DngCreator", "writeImage" );
                 e.printStackTrace();
