@@ -373,6 +373,7 @@ public class EZCam {
                 }
             }
 
+
             cameraManager.openCamera(currentCamera, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice camera) {
