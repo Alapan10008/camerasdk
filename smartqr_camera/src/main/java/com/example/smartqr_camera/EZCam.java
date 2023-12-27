@@ -234,6 +234,7 @@ public class EZCam {
     }
 
 
+
     /**
      * Open camera to prepare preview
      * @param templateType capture mode e.g. CameraDevice.TEMPLATE_PREVIEW
