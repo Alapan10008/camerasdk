@@ -16,6 +16,7 @@ plugins {
     id 'maven-publish'
 }
 
+
 android {
     namespace 'com.example.smartqr_camera'
     compileSdk 34

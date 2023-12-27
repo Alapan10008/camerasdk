@@ -1,0 +1,21 @@
+create a android module inside root directory of the project 
+
+add dependency of this module in the app of the project
+
+create a new repo and publish all the changes
+
+after that run this command ./gradlew assembleRelease  this will create the .aar file in the build folder of the module
+
+after that copy the .aar file of the module and paste it in the root directory
+
+after that we have to create two file jitpack.yml and pom.xml add the version and current repo in this files
+
+change build.gradle of the module (refer to the repo https://github.com/Alapan10008/camerasdk for the changes to be done)
+
+after that run this two commands ./gradlew tasks  and ./gradlew publishMavenPublicationToMavenLocal
+
+create a new release in the Github with tag as the same as the version mentioned inside the jitpack.yml and pom.xml
+
+
+
+
